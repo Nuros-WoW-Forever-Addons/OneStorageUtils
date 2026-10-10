@@ -446,13 +446,15 @@ function FrameHelper:ApplyHiResFrame(frame, options)
         frame.CloseButton:SetFrameLevel(border:GetFrameLevel() + 5)
     end
     
-    -- Position Title Text (Bounded between portrait ring and close button so it never overlaps portrait)
+    -- Position Title Text & Container inside the header slot
     local titleTarget = (frame.TitleContainer and frame.TitleContainer.TitleText) or frame.TitleText or frame.Title
+    local titleX = cfg.titleX or 0
+    local titleY = cfg.titleY or -13
     if frame.TitleContainer then
         frame.TitleContainer:ClearAllPoints()
-        frame.TitleContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 60, -8)
-        frame.TitleContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -36, -8)
-        frame.TitleContainer:SetHeight(24)
+        -- Anchor symmetrically to the frame with equal margins so the container is mathematically centered
+        frame.TitleContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 50 + titleX, titleY + 12)
+        frame.TitleContainer:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -50 + titleX, titleY - 12)
         frame.TitleContainer:SetFrameLevel(border:GetFrameLevel() + 2)
         frame.TitleContainer:Show()
     end
@@ -461,7 +463,7 @@ function FrameHelper:ApplyHiResFrame(frame, options)
         if frame.TitleContainer and titleTarget:GetParent() == frame.TitleContainer then
             titleTarget:SetPoint("CENTER", frame.TitleContainer, "CENTER", 0, 0)
         else
-            titleTarget:SetPoint("TOP", frame, "TOP", 0, -13)
+            titleTarget:SetPoint("CENTER", frame, "TOP", titleX, titleY)
         end
         titleTarget:SetDrawLayer("OVERLAY", 3)
         if titleTarget.SetJustifyH then titleTarget:SetJustifyH("CENTER") end
@@ -500,6 +502,8 @@ function FrameHelper:ApplySimplePanel(frame, titleText)
     local title = frame.Title or frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     title:ClearAllPoints()
     title:SetPoint("TOP", frame, "TOP", 0, -12)
+    if title.SetJustifyH then title:SetJustifyH("CENTER") end
+    if title.SetJustifyV then title:SetJustifyV("MIDDLE") end
     if titleText then
         title:SetText(titleText)
     end
