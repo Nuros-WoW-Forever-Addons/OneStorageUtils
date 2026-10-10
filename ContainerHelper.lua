@@ -362,6 +362,7 @@ end
 -- @param slotID number: Slot ID
 function ContainerHelper:UseItem(bagID, slotID)
     if not bagID or not slotID then return end
+    if InCombatLockdown and InCombatLockdown() then return end
     if C_Container and C_Container.UseContainerItem then
         pcall(C_Container.UseContainerItem, bagID, slotID)
     elseif UseContainerItem then
