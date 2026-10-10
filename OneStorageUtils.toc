@@ -1,0 +1,13 @@
+## Interface: 16001, 11200, 20400, 30300, 110000
+## Title: OneStorageUtils
+## Notes: Core utility library, Blizzard Metal frame theming, event messaging bus, and container abstraction for OneStorage Suite.
+## Author: OneStorage Suite Team
+## Version: 0.0.1
+## SavedVariables: OneStorageUtilsDB
+## OptionalDeps: OneSwatter
+
+Core.lua
+Logger.lua
+EventBus.lua
+FrameHelper.lua
+ContainerHelper.lua
