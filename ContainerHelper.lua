@@ -25,12 +25,12 @@ function ContainerHelper:GetPlayerBagIDs()
     return bagIDs
 end
 
--- Standard Bank Bags (in classic: 5..10/11; in retail: 6..12)
+-- Standard Bank Bags (in classic: 5..10/11; in retail/forever: 6..12)
 function ContainerHelper:GetBankBagIDs()
-    local numBags = NUM_BAG_SLOTS or 4
+    local numEquipped = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5
     local numBankBags = NUM_BANKBAGSLOTS or 7
     local bagIDs = {}
-    for i = (numBags + 1), (numBags + numBankBags) do
+    for i = (numEquipped + 1), (numEquipped + numBankBags) do
         table.insert(bagIDs, i)
     end
     return bagIDs
@@ -91,28 +91,30 @@ function ContainerHelper:GetBagInventoryID(bagID)
     end
     
     -- 4. Bank Bags
-    if BankButtonIDToInvSlotID then
-        local buttonIndex = bagID - numPlayerBags
-        if buttonIndex > 0 then
-            local ok, invID = pcall(BankButtonIDToInvSlotID, buttonIndex, true)
-            if ok and invID and invID > 0 then
-                return invID
-            end
-            -- Fallback attempt without boolean if needed by specific client variant
-            local ok2, invID2 = pcall(BankButtonIDToInvSlotID, buttonIndex)
-            if ok2 and invID2 and invID2 > 0 then
-                return invID2
-            end
+    local numEquipped = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5
+    local buttonIndex = bagID - numEquipped
+    if BankButtonIDToInvSlotID and buttonIndex > 0 then
+        local ok, invID = pcall(BankButtonIDToInvSlotID, buttonIndex, true)
+        if ok and invID and invID > 0 then
+            return invID
+        end
+        -- Fallback attempt without boolean if needed by specific client variant
+        local ok2, invID2 = pcall(BankButtonIDToInvSlotID, buttonIndex)
+        if ok2 and invID2 and invID2 > 0 then
+            return invID2
         end
     end
     
-    if bagID > numPlayerBags and GetInventorySlotInfo then
-        local buttonIndex = bagID - numPlayerBags
+    if bagID > numEquipped and GetInventorySlotInfo and buttonIndex > 0 then
         local invID = GetInventorySlotInfo("BankBagSlot" .. buttonIndex)
             or GetInventorySlotInfo("Bag" .. (bagID - 1) .. "Slot")
         if invID and invID > 0 then
             return invID
         end
+    end
+    
+    if buttonIndex > 0 then
+        return 67 + buttonIndex
     end
     
     return nil
