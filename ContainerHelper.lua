@@ -703,7 +703,7 @@ function ContainerHelper:IsJunk(bagID, slotID)
     
     -- Custom override from OneStorageScrap if present
     if scrapCheckCallback and type(scrapCheckCallback) == "function" then
-        local ok, isScrap = pcall(scrapCheckCallback, bagID, slotID, info.itemID, info.quality)
+        local ok, isScrap = pcall(scrapCheckCallback, bagID, slotID, info.itemID, info.quality, info)
         if ok and isScrap ~= nil then
             return isScrap
         end

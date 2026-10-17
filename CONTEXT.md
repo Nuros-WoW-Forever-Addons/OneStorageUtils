@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.3
+- **Current Version**: 0.0.4
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
@@ -57,6 +57,9 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.0.4
+- **ContainerHelper Scrap Callback Enhancement**: Updated `ContainerHelper:IsJunk` to pass the normalized `info` container item table as the 5th argument to `scrapCheckCallback`, enabling downstream scrap analyzers (like `OneStorageScrap`) to perform instant, zero-overhead item analysis without redundant container scans.
 
 ### Spin 0.0.3
 - **Camelot Bank Tab & Container Alignment**: Aligned container indices with WoW Forever Beta (Interface 16001, Camelot engine):
