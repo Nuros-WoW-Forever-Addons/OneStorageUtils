@@ -17,7 +17,9 @@ ContainerHelper.REAGENTBANK_CONTAINER = _G.REAGENTBANK_CONTAINER or -3
 
 -- Standard Player Bags (0: Backpack, 1-4: Bags, 5: Reagent Bag in modern WoW)
 function ContainerHelper:GetPlayerBagIDs()
-    local numBags = NUM_BAG_SLOTS or 4
+    local numBags = (NUM_TOTAL_EQUIPPED_BAG_SLOTS and NUM_TOTAL_EQUIPPED_BAG_SLOTS > 0 and NUM_TOTAL_EQUIPPED_BAG_SLOTS)
+        or (NUM_BAG_SLOTS and NUM_BAG_SLOTS > 0 and NUM_BAG_SLOTS)
+        or 4
     local bagIDs = { 0 }
     for i = 1, numBags do
         table.insert(bagIDs, i)

@@ -12,7 +12,7 @@ _G.OneStorageUtils = _G.OneStorageUtils or addonTable
 local Utils = _G.OneStorageUtils
 
 Utils.name = addonName
-Utils.version = "0.0.4"
+Utils.version = "0.0.5"
 Utils.Modules = Utils.Modules or {}
 Utils.isInitialized = false
 
