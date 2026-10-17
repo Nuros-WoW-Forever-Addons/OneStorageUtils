@@ -1,8 +1,8 @@
-## Interface: 16001, 11200, 20400, 30300, 110000
+## Interface: 16001
 ## Title: OneStorage |cff00ccffUtils|r
 ## Notes: Core utility library, Blizzard Metal frame theming, event messaging bus, and container abstraction for OneStorage Suite.
 ## Author: OneStorage Suite Team
-## Version: 0.0.1
+## Version: 0.0.2
 ## IconTexture: Interface\Icons\INV_Misc_Wrench_01
 ## SavedVariables: OneStorageUtilsDB
 ## OptionalDeps: OneSwatter

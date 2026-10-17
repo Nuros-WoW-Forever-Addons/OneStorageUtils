@@ -25,12 +25,12 @@ function ContainerHelper:GetPlayerBagIDs()
     return bagIDs
 end
 
--- Standard Bank Bags (in classic: 5..10/11; in retail/forever: 6..12)
+-- Standard Bank Bags (in classic/forever: 5..11; 7 slots)
 function ContainerHelper:GetBankBagIDs()
-    local numEquipped = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5
+    local numBags = NUM_BAG_SLOTS or 4
     local numBankBags = NUM_BANKBAGSLOTS or 7
     local bagIDs = {}
-    for i = (numEquipped + 1), (numEquipped + numBankBags) do
+    for i = (numBags + 1), (numBags + numBankBags) do
         table.insert(bagIDs, i)
     end
     return bagIDs
@@ -49,24 +49,9 @@ ContainerHelper.BANK_BAG_IDS = ContainerHelper:GetBankBagIDs()
 function ContainerHelper:GetBagInventoryID(bagID)
     if not bagID or bagID == 0 then return nil end
     
-    -- 1. Modern C_Container API
-    if C_Container and C_Container.ContainerIDToInventoryID then
-        local ok, invID = pcall(C_Container.ContainerIDToInventoryID, bagID)
-        if ok and invID and invID > 0 then
-            return invID
-        end
-    end
-    
-    -- 2. Legacy global function
-    if _G.ContainerIDToInventoryID then
-        local ok, invID = pcall(_G.ContainerIDToInventoryID, bagID)
-        if ok and invID and invID > 0 then
-            return invID
-        end
-    end
-    
-    -- 3. Player Equipped Bags (1 .. 4, or 5 if Reagent Bag)
     local numPlayerBags = NUM_BAG_SLOTS or 4
+    
+    -- 1. Player Equipped Bags (1 .. 4)
     if bagID >= 1 and bagID <= numPlayerBags then
         if GetInventorySlotInfo then
             local invID = GetInventorySlotInfo("Bag" .. (bagID - 1) .. "Slot")
@@ -75,46 +60,49 @@ function ContainerHelper:GetBagInventoryID(bagID)
                 return invID
             end
         end
-        -- Canonical mathematical fallback for player bags: bag 1 = 20, bag 2 = 21, bag 3 = 22, bag 4 = 23
         return 19 + bagID
     end
     
-    -- Modern Reagent Bag (bag 5)
-    if bagID == 5 then
-        if GetInventorySlotInfo then
-            local invID = GetInventorySlotInfo("CharacterReagentBag0Slot")
+    -- 2. Bank Bags (5 .. 11)
+    if bagID > numPlayerBags then
+        local buttonIndex = bagID - numPlayerBags
+        if BankButtonIDToInvSlotID and buttonIndex > 0 then
+            local ok, invID = pcall(BankButtonIDToInvSlotID, buttonIndex, true)
+            if ok and invID and invID > 0 then
+                return invID
+            end
+            local ok2, invID2 = pcall(BankButtonIDToInvSlotID, buttonIndex)
+            if ok2 and invID2 and invID2 > 0 then
+                return invID2
+            end
+        end
+        
+        if GetInventorySlotInfo and buttonIndex > 0 then
+            local invID = GetInventorySlotInfo("BankBagSlot" .. buttonIndex)
+                or GetInventorySlotInfo("Bag" .. (bagID - 1) .. "Slot")
             if invID and invID > 0 then
                 return invID
             end
         end
-        return 24
+        
+        if buttonIndex > 0 then
+            return 67 + buttonIndex
+        end
     end
     
-    -- 4. Bank Bags
-    local numEquipped = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 5
-    local buttonIndex = bagID - numEquipped
-    if BankButtonIDToInvSlotID and buttonIndex > 0 then
-        local ok, invID = pcall(BankButtonIDToInvSlotID, buttonIndex, true)
+    -- 3. Modern C_Container API / Legacy Fallback
+    if C_Container and C_Container.ContainerIDToInventoryID then
+        local ok, invID = pcall(C_Container.ContainerIDToInventoryID, bagID)
         if ok and invID and invID > 0 then
             return invID
         end
-        -- Fallback attempt without boolean if needed by specific client variant
-        local ok2, invID2 = pcall(BankButtonIDToInvSlotID, buttonIndex)
-        if ok2 and invID2 and invID2 > 0 then
-            return invID2
-        end
     end
     
-    if bagID > numEquipped and GetInventorySlotInfo and buttonIndex > 0 then
-        local invID = GetInventorySlotInfo("BankBagSlot" .. buttonIndex)
-            or GetInventorySlotInfo("Bag" .. (bagID - 1) .. "Slot")
-        if invID and invID > 0 then
+    if _G.ContainerIDToInventoryID then
+        local ok, invID = pcall(_G.ContainerIDToInventoryID, bagID)
+        if ok and invID and invID > 0 then
             return invID
         end
-    end
-    
-    if buttonIndex > 0 then
-        return 67 + buttonIndex
     end
     
     return nil

@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.1
+- **Current Version**: 0.0.2
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
@@ -57,6 +57,11 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.0.2
+- **Bank Bag Inventory Slot Prioritization**: Re-architected `ContainerHelper:GetBagInventoryID()` so bank bags (5..11) resolve to `BankButtonIDToInvSlotID(socketIndex, true)` (slots 68..74) before generic `C_Container` APIs, eliminating collision with Reagent or Bank Tab container indices.
+- **GetBankBagIDs Alignment**: Corrected `GetBankBagIDs()` to strictly return `{ 5, 6, 7, 8, 9, 10, 11 }`.
+- **TOC Runtime Target**: Aligned interface metadata to exclusive WoW Forever Beta target (`16001`).
 
 ### Spin 0.0.1
 - Universal container helper bridging modern `C_Container` APIs with classic container functions.
