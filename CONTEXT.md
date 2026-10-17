@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.2
+- **Current Version**: 0.0.3
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
@@ -57,6 +57,13 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.0.3
+- **Camelot Bank Tab & Container Alignment**: Aligned container indices with WoW Forever Beta (Interface 16001, Camelot engine):
+  - Set `ContainerHelper.BANK_CONTAINER = CharacterBankTab_1` (6).
+  - Aligned `GetBankBagIDs()` to strictly return `{ 7, 8, 9, 10, 11, 12 }` (CharacterBankTab_2..7).
+  - Wired `GetBagTexture`, `GetBagQuality`, and `GetBagItemLink` to directly query container `Enum.BagIndex.Characterbanktab` (-2) at slot `bagID - 5` for bank bags.
+  - Aligned `GetBagInventoryID()` to use `C_Bank.BankBagTypeAndIDToInvSlot` for bank tabs.
 
 ### Spin 0.0.2
 - **Bank Bag Inventory Slot Prioritization**: Re-architected `ContainerHelper:GetBagInventoryID()` so bank bags (5..11) resolve to `BankButtonIDToInvSlotID(socketIndex, true)` (slots 68..74) before generic `C_Container` APIs, eliminating collision with Reagent or Bank Tab container indices.

@@ -12,7 +12,7 @@ local ContainerHelper = {}
 -------------------------------------------------------------------------------
 
 ContainerHelper.BACKPACK_CONTAINER = _G.BACKPACK_CONTAINER or 0
-ContainerHelper.BANK_CONTAINER = _G.BANK_CONTAINER or -1
+ContainerHelper.BANK_CONTAINER = (Enum and Enum.BagIndex and Enum.BagIndex.CharacterBankTab_1) or 6
 ContainerHelper.REAGENTBANK_CONTAINER = _G.REAGENTBANK_CONTAINER or -3
 
 -- Standard Player Bags (0: Backpack, 1-4: Bags, 5: Reagent Bag in modern WoW)
@@ -25,15 +25,9 @@ function ContainerHelper:GetPlayerBagIDs()
     return bagIDs
 end
 
--- Standard Bank Bags (in classic/forever: 5..11; 7 slots)
+-- Standard Bank Bags (in WoW Forever Camelot: 7..12; 6 extra bank bags)
 function ContainerHelper:GetBankBagIDs()
-    local numBags = NUM_BAG_SLOTS or 4
-    local numBankBags = NUM_BANKBAGSLOTS or 7
-    local bagIDs = {}
-    for i = (numBags + 1), (numBags + numBankBags) do
-        table.insert(bagIDs, i)
-    end
-    return bagIDs
+    return { 7, 8, 9, 10, 11, 12 }
 end
 
 ContainerHelper.BAG_IDS = ContainerHelper:GetPlayerBagIDs()
@@ -63,30 +57,21 @@ function ContainerHelper:GetBagInventoryID(bagID)
         return 19 + bagID
     end
     
-    -- 2. Bank Bags (5 .. 11)
-    if bagID > numPlayerBags then
-        local buttonIndex = bagID - numPlayerBags
-        if BankButtonIDToInvSlotID and buttonIndex > 0 then
-            local ok, invID = pcall(BankButtonIDToInvSlotID, buttonIndex, true)
+    -- 2. Bank Bags (7 .. 12 in WoW Forever Camelot)
+    if bagID >= 7 and bagID <= 12 then
+        local bankTabSlot = bagID - 5 -- 2..7
+        if C_Bank and C_Bank.BankBagTypeAndIDToInvSlot then
+            local bankType = (Enum and Enum.BankType and Enum.BankType.Character) or 0
+            local ok, invSlot = pcall(C_Bank.BankBagTypeAndIDToInvSlot, bankType, bankTabSlot)
+            if ok and invSlot and invSlot >= 0 then
+                return invSlot + 1
+            end
+        end
+        if BankButtonIDToInvSlotID then
+            local ok, invID = pcall(BankButtonIDToInvSlotID, bankTabSlot - 1, true)
             if ok and invID and invID > 0 then
                 return invID
             end
-            local ok2, invID2 = pcall(BankButtonIDToInvSlotID, buttonIndex)
-            if ok2 and invID2 and invID2 > 0 then
-                return invID2
-            end
-        end
-        
-        if GetInventorySlotInfo and buttonIndex > 0 then
-            local invID = GetInventorySlotInfo("BankBagSlot" .. buttonIndex)
-                or GetInventorySlotInfo("Bag" .. (bagID - 1) .. "Slot")
-            if invID and invID > 0 then
-                return invID
-            end
-        end
-        
-        if buttonIndex > 0 then
-            return 67 + buttonIndex
         end
     end
     
@@ -109,12 +94,22 @@ function ContainerHelper:GetBagInventoryID(bagID)
 end
 
 --- Get the icon texture for an equipped bag container
--- @param bagID number: Bag ID (0 = backpack, 1..4 = player bags, 5+ = reagent/bank bags)
+-- @param bagID number: Bag ID (0 = backpack, 1..4 = player bags, 7..12 = bank bags)
 -- @return string|number|nil: Texture path or fileID
 function ContainerHelper:GetBagTexture(bagID)
     if bagID == nil then return nil end
     if bagID == 0 then
         return "Interface\\Buttons\\Button-Backpack-Up"
+    end
+    
+    -- Bank Bags (7..12) live in Characterbanktab container (-2), slot = bagID - 5 (2..7)
+    if bagID >= 7 and bagID <= 12 and C_Container and C_Container.GetContainerItemInfo then
+        local bankContainer = (Enum and Enum.BagIndex and Enum.BagIndex.Characterbanktab) or -2
+        local slotID = bagID - 5
+        local ok, info = pcall(C_Container.GetContainerItemInfo, bankContainer, slotID)
+        if ok and info and info.iconFileID then
+            return info.iconFileID
+        end
     end
     
     local invID = self:GetBagInventoryID(bagID)
@@ -146,6 +141,15 @@ end
 function ContainerHelper:GetBagQuality(bagID)
     if not bagID or bagID == 0 then return nil end
     
+    if bagID >= 7 and bagID <= 12 and C_Container and C_Container.GetContainerItemInfo then
+        local bankContainer = (Enum and Enum.BagIndex and Enum.BagIndex.Characterbanktab) or -2
+        local slotID = bagID - 5
+        local ok, info = pcall(C_Container.GetContainerItemInfo, bankContainer, slotID)
+        if ok and info and info.quality then
+            return info.quality
+        end
+    end
+    
     local invID = self:GetBagInventoryID(bagID)
     if not invID then return nil end
     
@@ -170,6 +174,16 @@ end
 -- @return string|nil: Item link
 function ContainerHelper:GetBagItemLink(bagID)
     if not bagID or bagID == 0 then return nil end
+    
+    if bagID >= 7 and bagID <= 12 and C_Container and C_Container.GetContainerItemLink then
+        local bankContainer = (Enum and Enum.BagIndex and Enum.BagIndex.Characterbanktab) or -2
+        local slotID = bagID - 5
+        local ok, link = pcall(C_Container.GetContainerItemLink, bankContainer, slotID)
+        if ok and link then
+            return link
+        end
+    end
+    
     local invID = self:GetBagInventoryID(bagID)
     if not invID then return nil end
     if GetInventoryItemLink then
