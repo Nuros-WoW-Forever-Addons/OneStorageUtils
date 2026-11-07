@@ -12,7 +12,7 @@ _G.OneStorageUtils = _G.OneStorageUtils or addonTable
 local Utils = _G.OneStorageUtils
 
 Utils.name = addonName
-Utils.version = "0.0.5"
+Utils.version = "0.0.7"
 Utils.Modules = Utils.Modules or {}
 Utils.isInitialized = false
 
@@ -21,6 +21,64 @@ local defaultDB = {
     debugMode = false,
     logLevel = 2, -- 1: Debug, 2: Info, 3: Warn, 4: Error
 }
+
+-- Print helper routing to 'OneAddon' chat tab
+local function GetOneAddonChatFrame()
+    local targetName = "OneAddon"
+    for i = 1, (NUM_CHAT_WINDOWS or 10) do
+        local name = GetChatWindowInfo(i)
+        if name == targetName then
+            local cf = _G["ChatFrame" .. i]
+            if cf then
+                local tab = _G["ChatFrame" .. i .. "Tab"]
+                if tab then
+                    tab:Show()
+                    if PanelTemplates_TabResize then
+                        pcall(PanelTemplates_TabResize, tab, 0)
+                    end
+                end
+                return cf
+            end
+        end
+    end
+    if FCF_OpenNewWindow then
+        local frame = FCF_OpenNewWindow(targetName)
+        if frame then
+            if FCF_DockFrame and GENERAL_CHAT_DOCK then
+                local docked = (FCFDock_GetChatFrames and FCFDock_GetChatFrames(GENERAL_CHAT_DOCK)) or (GENERAL_CHAT_DOCK and GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES) or {}
+                pcall(FCF_DockFrame, frame, #docked + 1, false)
+            end
+            if ChatFrame_RemoveAllMessageGroups then pcall(ChatFrame_RemoveAllMessageGroups, frame) end
+            if ChatFrame_RemoveAllChannels then pcall(ChatFrame_RemoveAllChannels, frame) end
+            if FCF_DockUpdate then pcall(FCF_DockUpdate) end
+            local id = frame.GetID and frame:GetID()
+            if id then
+                local tab = _G["ChatFrame" .. id .. "Tab"]
+                if tab then
+                    tab:Show()
+                    if PanelTemplates_TabResize then pcall(PanelTemplates_TabResize, tab, 0) end
+                end
+            end
+            if FCF_SelectDockFrame and DEFAULT_CHAT_FRAME then pcall(FCF_SelectDockFrame, DEFAULT_CHAT_FRAME) end
+            return frame
+        end
+    end
+    return DEFAULT_CHAT_FRAME or ChatFrame1
+end
+Utils.GetChatFrame = GetOneAddonChatFrame
+
+function Utils:Print(msg)
+    local frame = GetOneAddonChatFrame()
+    local prefix = "|cff00ccff[OneStorageUtils]|r "
+    local text = prefix .. tostring(msg)
+    if frame and frame.AddMessage then
+        frame:AddMessage(text)
+    elseif DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
+        DEFAULT_CHAT_FRAME:AddMessage(text)
+    else
+        print(text)
+    end
+end
 
 -------------------------------------------------------------------------------
 -- Module Registry API
@@ -219,6 +277,7 @@ end
 local eventFrame = CreateFrame("Frame", "OneStorageUtils_EventFrame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 eventFrame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
@@ -233,8 +292,21 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         
     elseif event == "PLAYER_LOGIN" then
         Utils.isInitialized = true
-        if Utils.Logger then
-            Utils.Logger:Log("Core", "INFO", "OneStorageUtils v" .. Utils.version .. " initialized successfully.")
+
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        if not Utils.welcomePrinted then
+            Utils.welcomePrinted = true
+            if C_Timer and C_Timer.After then
+                C_Timer.After(0.4, function()
+                    if Utils.Logger then
+                        Utils.Logger:Log("Core", "INFO", "OneStorageUtils v" .. Utils.version .. " initialized successfully.")
+                    end
+                end)
+            else
+                if Utils.Logger then
+                    Utils.Logger:Log("Core", "INFO", "OneStorageUtils v" .. Utils.version .. " initialized successfully.")
+                end
+            end
         end
     end
 end)
@@ -248,18 +320,18 @@ SlashCmdList["ONESTORAGEUTILS"] = function(msg)
         if Utils.db then
             Utils.db.debugMode = not Utils.db.debugMode
             local state = Utils.db.debugMode and "|cff00ff00ENABLED|r" or "|cffff0000DISABLED|r"
-            print("|cff00ccff[OneStorageUtils]|r Debug mode is now " .. state)
+            Utils:Print("Debug mode is now " .. state)
         end
     elseif cmd == "loglevel" and arg then
         local lvl = tonumber(arg)
         if lvl and Utils.Logger then
             Utils.Logger:SetLogLevel(lvl)
-            print("|cff00ccff[OneStorageUtils]|r Log level set to " .. lvl)
+            Utils:Print("Log level set to " .. lvl)
         end
     else
-        print("|cff00ccff[OneStorageUtils v" .. Utils.version .. "] Commands:|r")
-        print("  /osdump [frame]  - Inspect frame properties & anchors")
-        print("  /osutils debug   - Toggle diagnostic debug logging")
-        print("  /osutils loglevel <1-4> - Set log threshold (1:Debug, 2:Info, 3:Warn, 4:Error)")
+        Utils:Print("Commands (v" .. Utils.version .. "):")
+        Utils:Print("  /osdump [frame]  - Inspect frame properties & anchors")
+        Utils:Print("  /osutils debug   - Toggle diagnostic debug logging")
+        Utils:Print("  /osutils loglevel <1-4> - Set log threshold (1:Debug, 2:Info, 3:Warn, 4:Error)")
     end
 end

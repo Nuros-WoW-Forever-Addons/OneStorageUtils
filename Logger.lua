@@ -64,7 +64,12 @@ function Logger:Log(tag, level, message)
     local formatted = string.format("|cff00ccff[OneStorage]|r%s%s[%s] %s|r", 
         color, tagStr, level, tostring(message))
     
-    print(formatted)
+    local chatFrame = (Utils and Utils.GetChatFrame and Utils.GetChatFrame()) or DEFAULT_CHAT_FRAME
+    if chatFrame and chatFrame.AddMessage then
+        chatFrame:AddMessage(formatted)
+    else
+        print(formatted)
+    end
 end
 
 -------------------------------------------------------------------------------

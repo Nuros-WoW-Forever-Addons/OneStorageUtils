@@ -5,6 +5,22 @@ All notable changes to **OneStorageUtils** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.7] - 2026-11-06
+### Added
+- **OneAddon Chat Tab Integration**:
+  - Automatically routes all `Logger:Log` output, `Utils:Print`, safe-call stack traces, and diagnostics across `OneStorageBag`, `OneStorageBank`, and `OneStorageScrap` to the dedicated `"OneAddon"` chat tab instead of General chat.
+  - Automatically creates and docks the `"OneAddon"` chat tab if missing, keeping public chat channels isolated.
+- **Settled Startup Announcement**:
+  - Deferred initial startup announcement to `PLAYER_ENTERING_WORLD` with a `C_Timer.After(0.4)` delay, ensuring Blizzard chat frame docking and tabs are fully settled before printing.
+
+---
+
+## [0.0.6] - 2026-10-17
+### Fixed
+- **Safe Item Info Resolution (`GetItemInfoSafe`)**: Added `ContainerHelper.GetItemInfoSafe` falling back cleanly between `C_Item.GetItemInfo` and `_G.GetItemInfo`. Replaced direct `GetItemInfo` calls in `GetBagTexture`, `GetBagQuality`, and `MatchesSearch`, eliminating `attempt to call a nil value` crashes during bag updates (such as training recipes or selling items) on WoW Forever Beta (Interface 16001).
+
+---
+
 ## [0.0.5] - 2026-10-17
 ### Enhanced
 - **Reagent Bag Inclusion (`NUM_TOTAL_EQUIPPED_BAG_SLOTS`)**: Updated `ContainerHelper:GetPlayerBagIDs()` to dynamically prioritize `NUM_TOTAL_EQUIPPED_BAG_SLOTS` over `NUM_BAG_SLOTS`, ensuring container 5 (Reagent Bag) is included in inventory slot scans and scrap evaluations.

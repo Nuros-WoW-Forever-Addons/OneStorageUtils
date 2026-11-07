@@ -7,14 +7,14 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.5
+- **Current Version**: 0.0.7
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
   - URL: https://github.com/Nuros-WoW-Forever-Addons/OneStorageUtils
   *(For any new addon, initialize with Exists: FALSE until first commit/push)*
 - **Branching Policy**: All new features must be developed on a branch != `main` (e.g. `feature/<name>`)
-- **Live Sync Path**: `/Applications/World of Warcraft/_classic_beta_/Interface/AddOns/OneStorageUtils/`
+- **Live Sync Path**: `/Applications/World of Warcraft/_forever_/Interface/AddOns/OneStorageUtils/`
 - **Rollback Target**: Last working `main` branch commit
 - **Release Package**: `.github/workflows/package.yml` generates `OneStorageUtils-latest.zip` on push to `main`
 - **Target WoW Runtimes**: WoW Forever Beta (v1.60.1 / Interface 16001)
@@ -57,6 +57,15 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.0.7
+- Added automatic `"OneAddon"` chat tab integration:
+  - Ensured standalone tab creation, docked to `GENERAL_CHAT_DOCK` with public channel isolation.
+  - Routed all `Logger:Log` output, `Utils:Print`, and slash command feedback across `OneStorageBag`, `OneStorageBank`, and `OneStorageScrap` to `"OneAddon"` tab instead of General chat.
+  - Deferred initial startup announcement to `PLAYER_ENTERING_WORLD` with a `C_Timer.After(0.4)` settling delay.
+
+### Spin 0.0.6
+- **Safe Item Info Resolution (`GetItemInfoSafe`)**: Added `ContainerHelper.GetItemInfoSafe` falling back cleanly between `C_Item.GetItemInfo` and `_G.GetItemInfo`. Replaced direct `GetItemInfo` calls in `GetBagTexture`, `GetBagQuality`, and `MatchesSearch`, eliminating `attempt to call a nil value` crashes during bag updates (such as training recipes or selling items) on WoW Forever Beta (Interface 16001).
 
 ### Spin 0.0.5
 - **Reagent Bag Inclusion (`NUM_TOTAL_EQUIPPED_BAG_SLOTS`)**: Updated `ContainerHelper:GetPlayerBagIDs()` to dynamically prioritize `NUM_TOTAL_EQUIPPED_BAG_SLOTS` over `NUM_BAG_SLOTS`, ensuring container 5 (Reagent Bag) is included in inventory slot scans and scrap evaluations.

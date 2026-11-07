@@ -7,6 +7,17 @@
 local Utils = _G.OneStorageUtils or select(2, ...)
 local ContainerHelper = {}
 
+local function GetItemInfoSafe(itemRef)
+    if not itemRef then return nil end
+    if C_Item and C_Item.GetItemInfo then
+        return C_Item.GetItemInfo(itemRef)
+    elseif _G.GetItemInfo then
+        return _G.GetItemInfo(itemRef)
+    end
+    return nil
+end
+ContainerHelper.GetItemInfoSafe = GetItemInfoSafe
+
 -------------------------------------------------------------------------------
 -- Container Constants & ID Definitions
 -------------------------------------------------------------------------------
@@ -125,11 +136,15 @@ function ContainerHelper:GetBagTexture(bagID)
     if GetInventoryItemLink then
         local link = GetInventoryItemLink("player", invID)
         if link then
+            if C_Item and C_Item.GetItemIconByID then
+                local tex = C_Item.GetItemIconByID(link)
+                if tex then return tex end
+            end
             if GetItemIcon then
                 local tex = GetItemIcon(link)
                 if tex then return tex end
             end
-            local _, _, _, _, _, _, _, _, _, itemTexture = GetItemInfo(link)
+            local _, _, _, _, _, _, _, _, _, itemTexture = GetItemInfoSafe(link)
             if itemTexture then return itemTexture end
         end
     end
@@ -163,7 +178,7 @@ function ContainerHelper:GetBagQuality(bagID)
     if GetInventoryItemLink then
         local link = GetInventoryItemLink("player", invID)
         if link then
-            local _, _, quality = GetItemInfo(link)
+            local _, _, quality = GetItemInfoSafe(link)
             if quality then return quality end
         end
     end
@@ -603,7 +618,7 @@ function ContainerHelper:MatchesSearch(bagID, slotID, query)
     if query == "" then return true end
     
     -- 1. Query Item Name & Info
-    local itemName, _, itemQuality, itemLevel, _, itemType, itemSubType, _, equipLoc = GetItemInfo(link)
+    local itemName, _, itemQuality, itemLevel, _, itemType, itemSubType, _, equipLoc = GetItemInfoSafe(link)
     if itemName and itemName:lower():find(query, 1, true) then
         return true
     end
