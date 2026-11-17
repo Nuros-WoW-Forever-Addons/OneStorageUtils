@@ -959,5 +959,173 @@ function FrameHelper:CreateStepper(parent, name, label, minVal, maxVal, getter, 
     return container
 end
 
+-------------------------------------------------------------------------------
+-- Character Dropdown & Selector Component
+-------------------------------------------------------------------------------
+
+--- Create a bottom-right character dropdown with "Return to Self" button
+-- @param parent Frame: Parent container frame (e.g. OneStorageBagFrame or OneStorageBankFrame)
+-- @param namePrefix string: Unique name prefix for UI elements
+-- @param onSelectCallback function: Callback(charName, isCurrent)
+-- @return Frame: Dropdown container frame with .DropdownButton and .ReturnButton
+function FrameHelper:CreateCharacterDropdown(parent, namePrefix, onSelectCallback)
+    namePrefix = namePrefix or "OneStorage"
+    
+    local container = CreateFrame("Frame", namePrefix .. "CharSelectContainer", parent)
+    container:SetSize(255, 22)
+    container:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -16, 8)
+    
+    -- Dropdown Button (Silver button with down arrow)
+    local dropBtn = self:CreateSilverButton(container, namePrefix .. "CharDropdownBtn", "Character v")
+    dropBtn:SetSize(155, 20)
+    dropBtn:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    container.DropdownButton = dropBtn
+    
+    -- Return to Self Button (to the left of the dropdown)
+    local returnBtn = self:CreateSilverButton(container, namePrefix .. "ReturnSelfBtn", "Return to Self")
+    returnBtn:SetSize(95, 20)
+    returnBtn:SetPoint("RIGHT", dropBtn, "LEFT", -4, 0)
+    returnBtn:Hide() -- hidden when viewing self
+    container.ReturnButton = returnBtn
+    
+    local selectedChar = UnitName("player")
+    
+    local function UpdateLabel()
+        local charName = selectedChar or UnitName("player")
+        local isSelf = (charName == UnitName("player"))
+        local hex = "ffffffff"
+        local displayName = charName
+        local cache = Utils.CharacterCache or (OneStorageUtils and OneStorageUtils.CharacterCache)
+        if cache then
+            local data = cache:GetCharacter(charName)
+            if data then
+                if data.class then
+                    hex = cache.GetClassColorHex(data.class)
+                end
+                if data.fullName and data.fullName ~= "" then
+                    displayName = data.fullName
+                end
+            elseif isSelf and cache.GetPlayerFullName then
+                displayName = cache:GetPlayerFullName("player") or charName
+                local _, classFileName = UnitClass("player")
+                hex = cache.GetClassColorHex(classFileName)
+            end
+        end
+        dropBtn:SetText(string.format("|c%s%s|r |cffccccccv|r", hex, displayName))
+        if isSelf then
+            returnBtn:Hide()
+            container:SetWidth(dropBtn:GetWidth())
+        else
+            returnBtn:Show()
+            container:SetWidth(dropBtn:GetWidth() + returnBtn:GetWidth() + 4)
+        end
+    end
+    
+    container.UpdateLabel = UpdateLabel
+    container.SetSelected = function(s, charName)
+        selectedChar = charName or UnitName("player")
+        UpdateLabel()
+    end
+    container.GetSelected = function(s)
+        return selectedChar or UnitName("player")
+    end
+    
+    returnBtn:SetScript("OnClick", function()
+        selectedChar = UnitName("player")
+        UpdateLabel()
+        if onSelectCallback then
+            onSelectCallback(selectedChar, true)
+        end
+    end)
+    
+    -- Dropdown Popup Menu Frame
+    local menu = CreateFrame("Frame", namePrefix .. "CharMenuFrame", container, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    menu:SetFrameStrata("DIALOG")
+    menu:SetToplevel(true)
+    menu:SetClampedToScreen(true)
+    menu:Hide()
+    
+    if self.ApplySimplePanel then
+        self:ApplySimplePanel(menu, "Select Character")
+    end
+    
+    menu.buttons = {}
+    
+    local function PopulateMenu()
+        local cache = Utils.CharacterCache or (OneStorageUtils and OneStorageUtils.CharacterCache)
+        local list = (cache and cache:GetCharacterList()) or {}
+        local btnHeight = 22
+        local menuWidth = 230
+        local y = -34
+        
+        for i, charInfo in ipairs(list) do
+            local btn = menu.buttons[i]
+            if not btn then
+                btn = CreateFrame("Button", nil, menu)
+                btn:SetHeight(btnHeight)
+                
+                local hl = btn:CreateTexture(nil, "HIGHLIGHT")
+                hl:SetAllPoints()
+                hl:SetColorTexture(1, 1, 1, 0.15)
+                
+                local text = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                text:SetPoint("LEFT", btn, "LEFT", 10, 0)
+                text:SetPoint("RIGHT", btn, "RIGHT", -55, 0)
+                text:SetJustifyH("LEFT")
+                text:SetWordWrap(false)
+                btn.Text = text
+                
+                local lvlText = btn:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+                lvlText:SetPoint("RIGHT", btn, "RIGHT", -10, 0)
+                btn.LvlText = lvlText
+                
+                menu.buttons[i] = btn
+            end
+            
+            btn:SetWidth(menuWidth - 16)
+            btn:SetPoint("TOPLEFT", menu, "TOPLEFT", 8, y)
+            
+            local hex = cache and cache.GetClassColorHex(charInfo.class) or "ffffffff"
+            local currentTag = charInfo.isCurrent and " |cff888888(You)|r" or ""
+            local displayName = charInfo.fullName or charInfo.name
+            btn.Text:SetText(string.format("|c%s%s|r%s", hex, displayName, currentTag))
+            btn.LvlText:SetText("Lvl " .. tostring(charInfo.level or 1))
+            
+            btn:SetScript("OnClick", function()
+                menu:Hide()
+                selectedChar = charInfo.name
+                UpdateLabel()
+                if onSelectCallback then
+                    onSelectCallback(charInfo.name, charInfo.isCurrent)
+                end
+            end)
+            
+            btn:Show()
+            y = y - btnHeight - 2
+        end
+        
+        for i = #list + 1, #menu.buttons do
+            menu.buttons[i]:Hide()
+        end
+        
+        local totalH = 34 + (#list * (btnHeight + 2)) + 10
+        menu:SetSize(menuWidth, totalH)
+    end
+    
+    dropBtn:SetScript("OnClick", function()
+        if menu:IsShown() then
+            menu:Hide()
+        else
+            PopulateMenu()
+            menu:ClearAllPoints()
+            menu:SetPoint("BOTTOMRIGHT", dropBtn, "TOPRIGHT", 0, 4)
+            menu:Show()
+        end
+    end)
+    
+    UpdateLabel()
+    return container
+end
+
 -- Register module with Core
 Utils:RegisterModule("FrameHelper", FrameHelper)

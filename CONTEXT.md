@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.7
+- **Current Version**: 0.0.12
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
@@ -29,14 +29,17 @@
 - `Core.lua`: Global namespace export (`_G.OneStorageUtils`), module registry (`RegisterModule`), frame property dumper, persistent copy dialog UI, and `/osdump` / `/osutils` slash commands.
 - `Logger.lua`: Safe execution dispatcher, structured severity logging, and automatic listener bridge to `OneSwatter`.
 - `EventBus.lua`: Pub/Sub event dispatcher (`Register`, `Unregister`, `Fire`) for cross-addon inventory event messaging.
-- `FrameHelper.lua`: Reusable builders for Blizzard Metal dialog frames (`UI-DialogBox-Border`), title bars, search boxes, bag drawers, and sub-tabs.
+- `FrameHelper.lua`: Reusable builders for Blizzard Metal dialog frames (`UI-DialogBox-Border`), title bars, search boxes, bag drawers, character selector dropdowns, and sub-tabs.
 - `ContainerHelper.lua`: Cross-client container and inventory engine abstracting `C_Container` vs. legacy `GetContainerItemInfo`, slot iteration, item quality queries, and scrap callback hooks.
+- `CharacterCache.lua`: Centralized realmless character inventory & bank snapshot engine, query provider, and enhanced alt tooltip sub-frame.
 
 ### Global State & Database Schema (`OneStorageUtilsDB`)
 ```lua
 OneStorageUtilsDB = {
     debugMode = false,                 -- Enable debug logs
     logLevel = 2,                      -- 1: Debug, 2: Info, 3: Warn, 4: Error
+    characters = {},                   -- [charName] = { name, class, className, level, race, gender, money, lastUpdate, bags, bank }
+    showAltTooltip = true,             -- Show enhanced alt inventory sub-frame on GameTooltip
 }
 ```
 
@@ -47,7 +50,7 @@ OneStorageUtilsDB = {
 When picking up development on this addon:
 
 1. **Orientation**: Read `CONTEXT.md` (this file) to verify current state, known issues, and active backlog items.
-2. **Implementation**: Execute changes. For code refactoring or boilerplate, delegate to `qwen2.5-coder:32b` via the local `gx10_ollama` MCP server as mandated by user rules.
+2. **Implementation**: Execute changes. For bounded code generation, refactoring, or review, delegate to NVIDIA Nemotron 3 Super 120B via the `nemotron` MCP server as mandated by user rules.
 3. **Verification**: Verify in-game syntax and test using `/osdump`.
 4. **Handoff Update**:
    - Move completed tasks from **Upcoming Backlog** to **Recent Completed Work**.
@@ -57,6 +60,53 @@ When picking up development on this addon:
 ---
 
 ## ✅ Recent Completed Work (Latest Spins)
+
+### Spin 0.0.15
+- **Prevent Overwriting Bank Snapshot with 0 Slots Away from Banker**:
+  - `C_Container.GetContainerNumSlots` returns 0 for bank containers when away from a banker. Calling `SaveCurrentCharacterBank()` on `BANKFRAME_CLOSED` or `/reload` was overwriting valid cached bank data with `numSlots = 0`.
+  - Added strict safety check in `CharacterCache:SaveCurrentCharacterBank()`: aborts immediately if `mainSlots <= 0` or `totalBankSlots <= 0`, guaranteeing cached bank data is never cleared away from a banker.
+  - Added dual throttled scans (at `0.3s` and `0.8s`) during active banker visits to ensure all equipped bank bags stream completely before saving.
+
+### Spin 0.0.14
+- **Snapshot Item Field Key Mismatch (Missing Icons & Links)**:
+  - Fixed property name mismatch in `SaveCurrentCharacterBank()` and `SaveCurrentCharacterBags()` where normalized `ContainerHelper:GetItemInfo()` fields (`.icon`, `.link`, `.count`) were read as `.iconFileID`, `.hyperlink`, and `.stackCount`.
+  - Added robust fallback resolution: `icon = itemInfo.icon or itemInfo.iconFileID` (with `C_Item.GetItemIconByID` fallback) and `link = itemInfo.link or itemInfo.hyperlink`.
+- **Throttled Bank Scan Scheduling**:
+  - Implemented `ScheduleBankScan()` with `C_Timer.After(0.3, ...)` to ensure bank contents are recorded after streaming completes from the server.
+  - Registered modern `PLAYER_INTERACTION_MANAGER_FRAME_SHOW`/`HIDE`, `BANK_TABS_CHANGED`, and `BANKFRAME_CLOSED` events.
+
+### Spin 0.0.13
+- **Reagent Bank Container Snapshot Caching**:
+  - Extended `CharacterCache:SaveCurrentCharacterBank()` to include `ContainerHelper.REAGENTBANK_CONTAINER` (`-3`) in `bankContainers`, capturing full Reagent Bank contents and slot counts whenever the player visits any banker NPC.
+
+### Spin 0.0.12
+- **Dropdown Missing Glyph Box & Dynamic Sizing**:
+  - Replaced Unicode down-arrow `▾` (which rendered as a gray square box in WoW default fonts) with clean ASCII `|cffccccccv|r`.
+  - Auto-collapses dropdown container width to `155px` when viewing self and expands to `255px` when `Return to Self` is visible.
+
+### Spin 0.0.11
+- **Protected GameTooltip Script Hooking**: Fixed `bad argument #2 to '?' (Usage: local success = self:HookScript(scriptTypeName, script [, bindingType]))` when initializing `CharacterCache.lua` on Camelot. Prioritized `TooltipDataProcessor.AddTooltipPostCall` and guarded `GameTooltip:HookScript` calls with `HasScript()` checks.
+
+### Spin 0.0.10
+- **Character First & Last Name Resolution & Display**:
+  - Implemented `CharacterCache:GetPlayerFullName(unit)` to dynamically resolve characters' First and Last names on WoW Forever using `UnitPVPName`, `UnitFullName`, `UnitName`, and RP addon APIs (TRP3/MRP).
+  - Persisted `charData.fullName` in `OneStorageUtilsDB.characters`.
+  - Updated `FrameHelper:CreateCharacterDropdown` to render the full First and Last name on both the dropdown trigger button (`155px` width) and the character selection list items (`230px` menu width).
+  - Integrated full names into `OneStorageAltTooltipFrame` and `CharacterCache:GetItemCounts()`.
+
+### Spin 0.0.9
+- **Centralized Character Snapshot Cache (`CharacterCache.lua`)**:
+  - Automatically captures and persists account-wide snapshots of each character's bag inventory (0..5), bank tabs (6..12), money, level, and class without requiring realm prefixes (tailored for WoW Forever's realmless engine).
+  - Event-driven throttled updates on `BAG_UPDATE_DELAYED`, `BANKFRAME_OPENED`, and `PLAYER_MONEY`.
+  - Added query APIs: `GetCharacterList()`, `GetCharacter(name)`, `GetItemCounts(itemID, itemLink)`, and `DeleteCharacter(name)`.
+- **Enhanced Alt Tooltip Sub-Frame (`OneStorageAltTooltipFrame`)**:
+  - Standalone frame anchored to the bottom of `GameTooltip` displaying item counts across alts (broken down by bags and bank in class colors, with an account-wide total).
+  - Controlled via `OneStorageUtilsDB.showAltTooltip` setting.
+- **Reusable Character Dropdown Component**:
+  - Added `FrameHelper:CreateCharacterDropdown(parent, namePrefix, onSelectCallback)` featuring a bottom-right character selector with a "Return to Self" button, populating a clean Blizzard Metal character list.
+
+### Spin 0.0.8
+- **Dynamic Money Coin Icon Scaling**: Added optional `iconSize` argument to `ContainerHelper:FormatMoney(copper, iconSize)`. When specified (and not 12), generates proportional inline texture strings (`|T...:size:size:2:0|t`) matching custom or enlarged font heights while preserving standard 12px defaults for backward compatibility.
 
 ### Spin 0.0.7
 - Added automatic `"OneAddon"` chat tab integration:

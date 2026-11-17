@@ -679,21 +679,31 @@ local COPPER_ICON = "|TInterface\\MoneyFrame\\UI-CopperIcon:12:12:2:0|t"
 
 --- Format a copper amount into formatted text with Blizzard coin icons
 -- @param copper number: Amount in copper
+-- @param iconSize number|nil: Optional custom icon size in pixels (default: 12)
 -- @return string: Formatted money string
-function ContainerHelper:FormatMoney(copper)
+function ContainerHelper:FormatMoney(copper, iconSize)
     copper = copper or 0
     local gold = math.floor(copper / 10000)
     local silver = math.floor((copper % 10000) / 100)
     local cop = copper % 100
     
+    local goldIcon, silverIcon, copperIcon
+    if iconSize and iconSize ~= 12 then
+        goldIcon = string.format("|TInterface\\MoneyFrame\\UI-GoldIcon:%d:%d:2:0|t", iconSize, iconSize)
+        silverIcon = string.format("|TInterface\\MoneyFrame\\UI-SilverIcon:%d:%d:2:0|t", iconSize, iconSize)
+        copperIcon = string.format("|TInterface\\MoneyFrame\\UI-CopperIcon:%d:%d:2:0|t", iconSize, iconSize)
+    else
+        goldIcon, silverIcon, copperIcon = GOLD_ICON, SILVER_ICON, COPPER_ICON
+    end
+    
     local parts = {}
     if gold > 0 then
-        table.insert(parts, string.format("%d%s", gold, GOLD_ICON))
+        table.insert(parts, string.format("%d%s", gold, goldIcon))
     end
     if silver > 0 or gold > 0 then
-        table.insert(parts, string.format("%d%s", silver, SILVER_ICON))
+        table.insert(parts, string.format("%d%s", silver, silverIcon))
     end
-    table.insert(parts, string.format("%d%s", cop, COPPER_ICON))
+    table.insert(parts, string.format("%d%s", cop, copperIcon))
     
     return table.concat(parts, " ")
 end
