@@ -437,7 +437,7 @@ local function CreateAltTooltipFrame()
     
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -8)
-    title:SetText("|cffffcc00Other Characters Inventory|r")
+    title:SetText("|cffffcc00Character Inventory|r")
     f.Title = title
     
     f.lines = {}
@@ -477,25 +477,7 @@ function CharacterCache:UpdateAltTooltip(itemRef)
         return
     end
     
-    -- Only display if multiple characters have the item, or an alt has it
-    local hasAlts = false
-    local currentName = UnitName("player")
-    for _, c in ipairs(counts.characters) do
-        if c.name ~= currentName then
-            hasAlts = true
-            break
-        end
-    end
-    
-    if not hasAlts then
-        if _G.OneStorageAltTooltipFrame then _G.OneStorageAltTooltipFrame:Hide() end
-        return
-    end
-    
     local f = CreateAltTooltipFrame()
-    f:ClearAllPoints()
-    f:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, -2)
-    f:SetPoint("TOPRIGHT", GameTooltip, "BOTTOMRIGHT", 0, -2)
     
     local lineIdx = 0
     for _, c in ipairs(counts.characters) do
@@ -526,8 +508,159 @@ function CharacterCache:UpdateAltTooltip(itemRef)
         f.lines[i]:Hide()
     end
     
-    local height = 24 + (lineIdx * 15)
-    f:SetHeight(math.max(36, height))
+    -- Calculate required dynamic width based on the longest text line
+    local maxTextW = (f.Title and f.Title:GetStringWidth()) or 140
+    for i = 1, lineIdx do
+        local lineW = f.lines[i] and f.lines[i]:GetStringWidth() or 0
+        if lineW > maxTextW then
+            maxTextW = lineW
+        end
+    end
+    
+    local tooltipWidth = (GameTooltip and GameTooltip:GetWidth()) or 160
+    local targetWidth = math.max(tooltipWidth, maxTextW + 24)
+    local height = 30 + (lineIdx * 15)
+    
+    f:ClearAllPoints()
+    f:SetWidth(targetWidth)
+    f:SetHeight(math.max(40, height))
+    
+    -- Dynamic anchor positioning based on mouse cursor and screen bounds
+    local point = "TOPLEFT"
+    local relativePoint = "BOTTOMLEFT"
+    local xOfs = 0
+    local yOfs = -2
+    
+    local gtLeft = GameTooltip and GameTooltip:GetLeft()
+    local gtRight = GameTooltip and GameTooltip:GetRight()
+    local gtTop = GameTooltip and GameTooltip:GetTop()
+    local gtBottom = GameTooltip and GameTooltip:GetBottom()
+    
+    if gtLeft and gtRight and gtTop and gtBottom then
+        local uipWidth = UIParent and UIParent:GetWidth() or 1920
+        local uipHeight = UIParent and UIParent:GetHeight() or 1080
+        local sMargin = 10
+        
+        -- Get cursor position in UI parent space
+        local scale = (UIParent and UIParent:GetEffectiveScale()) or 1
+        local curX, curY = GetCursorPosition()
+        local mouseX = (curX and scale > 0) and (curX / scale) or (gtLeft + gtRight) / 2
+        local mouseY = (curY and scale > 0) and (curY / scale) or (gtBottom - 20)
+        
+        -- Cursor bounding box with safety padding (WoW hand cursor ~32x32)
+        local cMargin = 8
+        local cLeft = mouseX - cMargin
+        local cRight = mouseX + 32 + cMargin
+        local cBottom = mouseY - 32 - cMargin
+        local cTop = mouseY + cMargin
+        
+        local gtMidX = (gtLeft + gtRight) / 2
+        local mouseOnRight = mouseX >= gtMidX
+        
+        -- Generate candidate anchor positions ordered by preference (expanding away from mouse)
+        local candidates = {}
+        if mouseOnRight then
+            -- Mouse is on right: prefer expanding to the LEFT
+            table.insert(candidates, {
+                point = "TOPRIGHT", relPoint = "BOTTOMRIGHT", xOfs = 0, yOfs = -2,
+                fLeft = gtRight - targetWidth, fRight = gtRight,
+                fTop = gtBottom - 2, fBottom = gtBottom - 2 - height,
+                isBelow = true, isAway = true
+            })
+            table.insert(candidates, {
+                point = "BOTTOMRIGHT", relPoint = "TOPRIGHT", xOfs = 0, yOfs = 2,
+                fLeft = gtRight - targetWidth, fRight = gtRight,
+                fBottom = gtTop + 2, fTop = gtTop + 2 + height,
+                isBelow = false, isAway = true
+            })
+            table.insert(candidates, {
+                point = "TOPRIGHT", relPoint = "TOPLEFT", xOfs = -2, yOfs = 0,
+                fRight = gtLeft - 2, fLeft = gtLeft - 2 - targetWidth,
+                fTop = gtTop, fBottom = gtTop - height,
+                isBelow = false, isAway = true
+            })
+            table.insert(candidates, {
+                point = "TOPLEFT", relPoint = "BOTTOMLEFT", xOfs = 0, yOfs = -2,
+                fLeft = gtLeft, fRight = gtLeft + targetWidth,
+                fTop = gtBottom - 2, fBottom = gtBottom - 2 - height,
+                isBelow = true, isAway = false
+            })
+            table.insert(candidates, {
+                point = "BOTTOMLEFT", relPoint = "TOPLEFT", xOfs = 0, yOfs = 2,
+                fLeft = gtLeft, fRight = gtLeft + targetWidth,
+                fBottom = gtTop + 2, fTop = gtTop + 2 + height,
+                isBelow = false, isAway = false
+            })
+        else
+            -- Mouse is on left: prefer expanding to the RIGHT
+            table.insert(candidates, {
+                point = "TOPLEFT", relPoint = "BOTTOMLEFT", xOfs = 0, yOfs = -2,
+                fLeft = gtLeft, fRight = gtLeft + targetWidth,
+                fTop = gtBottom - 2, fBottom = gtBottom - 2 - height,
+                isBelow = true, isAway = true
+            })
+            table.insert(candidates, {
+                point = "BOTTOMLEFT", relPoint = "TOPLEFT", xOfs = 0, yOfs = 2,
+                fLeft = gtLeft, fRight = gtLeft + targetWidth,
+                fBottom = gtTop + 2, fTop = gtTop + 2 + height,
+                isBelow = false, isAway = true
+            })
+            table.insert(candidates, {
+                point = "TOPLEFT", relPoint = "TOPRIGHT", xOfs = 2, yOfs = 0,
+                fLeft = gtRight + 2, fRight = gtRight + 2 + targetWidth,
+                fTop = gtTop, fBottom = gtTop - height,
+                isBelow = false, isAway = true
+            })
+            table.insert(candidates, {
+                point = "TOPRIGHT", relPoint = "BOTTOMRIGHT", xOfs = 0, yOfs = -2,
+                fLeft = gtRight - targetWidth, fRight = gtRight,
+                fTop = gtBottom - 2, fBottom = gtBottom - 2 - height,
+                isBelow = true, isAway = false
+            })
+            table.insert(candidates, {
+                point = "BOTTOMRIGHT", relPoint = "TOPRIGHT", xOfs = 0, yOfs = 2,
+                fLeft = gtRight - targetWidth, fRight = gtRight,
+                fBottom = gtTop + 2, fTop = gtTop + 2 + height,
+                isBelow = false, isAway = false
+            })
+        end
+        
+        -- Score candidates
+        local bestCand = candidates[1]
+        local bestScore = -999999
+        
+        for _, cand in ipairs(candidates) do
+            local hitsCursor = (cand.fLeft < cRight and cand.fRight > cLeft and cand.fBottom < cTop and cand.fTop > cBottom)
+            local clipsLeft = cand.fLeft < sMargin
+            local clipsRight = cand.fRight > uipWidth - sMargin
+            local clipsBottom = cand.fBottom < sMargin
+            local clipsTop = cand.fTop > uipHeight - sMargin
+            
+            local score = 100
+            if hitsCursor then
+                score = score - 1000 -- Heavy penalty: never cover the mouse
+            end
+            if clipsBottom then score = score - 200 end
+            if clipsTop then score = score - 200 end
+            if clipsLeft then score = score - 200 end
+            if clipsRight then score = score - 200 end
+            
+            if cand.isBelow then score = score + 5 end
+            if cand.isAway then score = score + 10 end
+            
+            if score > bestScore then
+                bestScore = score
+                bestCand = cand
+            end
+        end
+        
+        point = bestCand.point
+        relativePoint = bestCand.relPoint
+        xOfs = bestCand.xOfs
+        yOfs = bestCand.yOfs
+    end
+    
+    f:SetPoint(point, GameTooltip, relativePoint, xOfs, yOfs)
     f:Show()
 end
 
@@ -568,8 +701,83 @@ local function IsBankInteraction(interactionType)
         or interactionType == pit.AccountBanker
 end
 
+-------------------------------------------------------------------------------
+-- Profession & TradeSkill Frame Tooltip Hooks
+-------------------------------------------------------------------------------
+
+local function HookTradeSkillFrame()
+    if not _G.TradeSkillFrame or _G.TradeSkillFrame._osHooked then return end
+    _G.TradeSkillFrame._osHooked = true
+    
+    -- Hook output icon
+    if _G.TradeSkillSkillIcon then
+        _G.TradeSkillSkillIcon:HookScript("OnEnter", function(self)
+            local selected = (GetTradeSkillSelectionIndex and GetTradeSkillSelectionIndex()) or (_G.TradeSkillFrame and _G.TradeSkillFrame.selectedSkill)
+            if selected and GetTradeSkillItemLink then
+                local link = GetTradeSkillItemLink(selected)
+                if link then
+                    CharacterCache:UpdateAltTooltip(link)
+                end
+            end
+        end)
+    end
+    
+    -- Hook reagent buttons (TradeSkillReagent1 .. MAX_TRADE_SKILL_REAGENTS)
+    local maxReagents = _G.MAX_TRADE_SKILL_REAGENTS or 8
+    for i = 1, maxReagents do
+        local btn = _G["TradeSkillReagent" .. i]
+        if btn then
+            btn:HookScript("OnEnter", function(self)
+                local selected = (GetTradeSkillSelectionIndex and GetTradeSkillSelectionIndex()) or (_G.TradeSkillFrame and _G.TradeSkillFrame.selectedSkill)
+                local reagentID = self:GetID()
+                if selected and reagentID and GetTradeSkillReagentItemLink then
+                    local link = GetTradeSkillReagentItemLink(selected, reagentID)
+                    if link then
+                        CharacterCache:UpdateAltTooltip(link)
+                    end
+                end
+            end)
+        end
+    end
+end
+
+local function HookCraftFrame()
+    if not _G.CraftFrame or _G.CraftFrame._osHooked then return end
+    _G.CraftFrame._osHooked = true
+    
+    if _G.CraftIcon then
+        _G.CraftIcon:HookScript("OnEnter", function(self)
+            local selected = GetCraftSelectionIndex and GetCraftSelectionIndex()
+            if selected and GetCraftItemLink then
+                local link = GetCraftItemLink(selected)
+                if link then
+                    CharacterCache:UpdateAltTooltip(link)
+                end
+            end
+        end)
+    end
+    
+    local maxReagents = _G.MAX_CRAFT_REAGENTS or 8
+    for i = 1, maxReagents do
+        local btn = _G["CraftReagent" .. i]
+        if btn then
+            btn:HookScript("OnEnter", function(self)
+                local selected = GetCraftSelectionIndex and GetCraftSelectionIndex()
+                local reagentID = self:GetID()
+                if selected and reagentID and GetCraftReagentItemLink then
+                    local link = GetCraftReagentItemLink(selected, reagentID)
+                    if link then
+                        CharacterCache:UpdateAltTooltip(link)
+                    end
+                end
+            end)
+        end
+    end
+end
+
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 eventFrame:RegisterEvent("BANKFRAME_OPENED")
 eventFrame:RegisterEvent("PLAYERBANKSLOTS_CHANGED")
@@ -580,6 +788,15 @@ eventFrame:RegisterEvent("PLAYER_MONEY")
 eventFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
         CharacterCache:SaveCurrentCharacterBags()
+        HookTradeSkillFrame()
+        HookCraftFrame()
+    elseif event == "ADDON_LOADED" then
+        local loadedAddon = ...
+        if loadedAddon == "Blizzard_TradeSkillUI" then
+            HookTradeSkillFrame()
+        elseif loadedAddon == "Blizzard_CraftUI" then
+            HookCraftFrame()
+        end
     elseif event == "BAG_UPDATE_DELAYED" then
         ScheduleBagScan()
     elseif event == "BANKFRAME_OPENED" then
@@ -599,13 +816,83 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 
--- Tooltip Integration
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip == GameTooltip and data and data.id then
-            CharacterCache:UpdateAltTooltip(data.id)
+-- Tooltip Integration (Items, Reagents, Recipes, and Trade Skills)
+local function OnTooltipItemProcessed(tooltip, data)
+    if tooltip ~= GameTooltip then return end
+    
+    local itemRef = nil
+    
+    -- 1. Try data.id if data is an Item
+    if data then
+        if data.type == (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item) and data.id and data.id > 0 then
+            itemRef = data.id
+        elseif data.hyperlink and type(data.hyperlink) == "string" then
+            itemRef = tonumber(data.hyperlink:match("item:(%d+)"))
+        elseif data.id and data.id > 0 and data.type ~= (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell) then
+            itemRef = data.id
         end
-    end)
+    end
+    
+    -- 2. Fall back to tooltip:GetItem()
+    if not itemRef and tooltip.GetItem then
+        local _, link, id = tooltip:GetItem()
+        itemRef = id or (link and tonumber(link:match("item:(%d+)")))
+    end
+    
+    if itemRef then
+        CharacterCache:UpdateAltTooltip(itemRef)
+    end
+end
+
+local function CheckGameTooltipForAltInventory(tooltip)
+    if not tooltip or tooltip ~= GameTooltip or not tooltip:IsShown() then return end
+    
+    local itemRef = nil
+    if tooltip.GetItem then
+        local _, link, id = tooltip:GetItem()
+        itemRef = id or (link and tonumber(link:match("item:(%d+)")))
+    end
+    
+    if not itemRef and tooltip.GetTooltipData then
+        local data = tooltip:GetTooltipData()
+        if data then
+            if data.type == (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item) and data.id and data.id > 0 then
+                itemRef = data.id
+            elseif data.hyperlink and type(data.hyperlink) == "string" then
+                itemRef = tonumber(data.hyperlink:match("item:(%d+)"))
+            elseif data.id and data.id > 0 and data.type ~= (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell) then
+                itemRef = data.id
+            end
+        end
+    end
+    
+    if itemRef then
+        CharacterCache:UpdateAltTooltip(itemRef)
+    else
+        if _G.OneStorageAltTooltipFrame then
+            _G.OneStorageAltTooltipFrame:Hide()
+        end
+    end
+end
+
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnTooltipItemProcessed)
+    
+    if Enum and Enum.TooltipDataType then
+        for typeKey, typeValue in pairs(Enum.TooltipDataType) do
+            if typeKey ~= "Item" and (
+                typeKey == "RecipeReagent" or
+                typeKey == "Profession" or
+                typeKey == "CraftingCost" or
+                typeKey:find("Reagent") or
+                typeKey:find("Trade") or
+                typeKey:find("Craft") or
+                typeKey == "Spell"
+            ) then
+                pcall(TooltipDataProcessor.AddTooltipPostCall, typeValue, OnTooltipItemProcessed)
+            end
+        end
+    end
 elseif GameTooltip and GameTooltip.HasScript and GameTooltip:HasScript("OnTooltipSetItem") then
     GameTooltip:HookScript("OnTooltipSetItem", function(tooltip)
         local _, link = tooltip:GetItem()
@@ -613,6 +900,29 @@ elseif GameTooltip and GameTooltip.HasScript and GameTooltip:HasScript("OnToolti
             CharacterCache:UpdateAltTooltip(link)
         end
     end)
+end
+
+if GameTooltip and GameTooltip.HasScript and GameTooltip:HasScript("OnShow") then
+    GameTooltip:HookScript("OnShow", function(tooltip)
+        CheckGameTooltipForAltInventory(tooltip)
+    end)
+end
+
+-- Post-hook GameTooltip profession/recipe setters in case TooltipDataProcessor fires before Show()
+if hooksecurefunc and GameTooltip then
+    local recipeMethods = {
+        "SetTradeSkillItem",
+        "SetCraftItem",
+        "SetRecipeReagentItem",
+        "SetRecipeResultItem",
+    }
+    for _, methodName in ipairs(recipeMethods) do
+        if type(GameTooltip[methodName]) == "function" then
+            hooksecurefunc(GameTooltip, methodName, function(tooltip)
+                CheckGameTooltipForAltInventory(tooltip)
+            end)
+        end
+    end
 end
 
 if GameTooltip and GameTooltip.HasScript and GameTooltip:HasScript("OnHide") then

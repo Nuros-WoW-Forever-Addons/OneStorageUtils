@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.12
+- **Current Version**: 0.0.18
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
@@ -70,6 +70,40 @@ When picking up development on this addon:
 ### Spin 0.0.14
 - **Snapshot Item Field Key Mismatch (Missing Icons & Links)**:
   - Fixed property name mismatch in `SaveCurrentCharacterBank()` and `SaveCurrentCharacterBags()` where normalized `ContainerHelper:GetItemInfo()` fields (`.icon`, `.link`, `.count`) were read as `.iconFileID`, `.hyperlink`, and `.stackCount`.
+  - Added robust fallback resolution: `icon = itemInfo.icon or itemInfo.iconFileID` (with `C_Item.GetItemIconByID` fallback) and `link = itemInfo.link or itemInfo.hyperlink`.
+- **Throttled Bank Scan Scheduling**:
+  - Implemented `ScheduleBankScan()` with `C_Timer.After(0.3, ...)` to ensure bank contents are recorded after streaming completes from the server.
+  - Registered modern `PLAYER_INTERACTION_MANAGER_FRAME_SHOW`/`HIDE`, `BANK_TABS_CHANGED`, and `BANKFRAME_CLOSED` events.
+
+### Spin 0.0.18
+- **Profession & Crafting Window Tooltip Integration**:
+  - Expanded `CharacterCache:UpdateAltTooltip` to automatically activate when hovering over reagents and crafted items in profession and crafting interfaces (`TradeSkillFrame`, `CraftFrame`, `ProfessionsFrame`).
+  - Added dedicated hooks on `TradeSkillFrame` (`TradeSkillSkillIcon`, `TradeSkillReagent1..8`) and `CraftFrame` (`CraftIcon`, `CraftReagent1..8`) querying native `GetTradeSkillReagentItemLink`, `GetTradeSkillItemLink`, and `GetCraftReagentItemLink`.
+  - Registered `TooltipDataProcessor.AddTooltipPostCall` across all recipe, reagent, and craft data types (`RecipeReagent`, `Profession`, `CraftingCost`, `Spell`), with multi-stage item resolution (`data.id`, `data.hyperlink`, and `tooltip:GetItem()`), plus `GameTooltip` `OnShow` and `hooksecurefunc` profession setter hooks.
+  - Updated `OneStorageAltTooltipFrame` ("Character Inventory") to display cached Bags and Bank counts for any character that owns the item—including when only the currently logged-in character has it.
+
+### Spin 0.0.17
+- **Cursor-Aware Dynamic Sub-Frame Anchor & Anti-Overlap Engine**:
+  - Sampled live mouse cursor coordinates via `GetCursorPosition()` / `UIParent:GetEffectiveScale()`.
+  - Built a 2D collision detection and scoring model that evaluates candidate anchor positions (below-away, above-away, side-away) against the mouse pointer bounding box (`36x36px` with buffer).
+  - Automatically flips alignment (expanding away from the mouse) or flips vertical placement (above vs below) whenever the cursor or slot button would otherwise be covered by `OneStorageAltTooltipFrame`.
+  - Prevents the WoW gauntlet hand cursor from obscuring any part of the alt inventory tooltip text.
+
+### Spin 0.0.16
+- **Alt Tooltip Sub-Frame Dynamic Width & Smart Boundary Anchoring**:
+  - Dynamically calculates `OneStorageAltTooltipFrame` width based on the longest text string using `GetStringWidth()` across `f.Title` and all active line strings, setting width to `max(tooltipWidth, maxTextW + 24)`.
+  - Added smart screen boundary positioning: detects if host tooltip is near the right screen edge or bottom screen edge and dynamically anchors `TOPRIGHT` vs `TOPLEFT` and above vs below to prevent clipping offscreen.
+  - Increased bottom padding from `24 + lineIdx*15` to `30 + lineIdx*15` (minimum 40px) so the "Total Across Characters" line is cleanly padded inside the bottom border.
+
+### Spin 0.0.15
+- **Prevent Overwriting Bank Snapshot with 0 Slots Away from Banker**:
+  - Added strict safety check in `CharacterCache:SaveCurrentCharacterBank()`: aborts immediately if `mainSlots <= 0` or `totalBankSlots <= 0`, guaranteeing cached bank data can never be overwritten with 0 slots.
+  - Removed bank scanning on `BANKFRAME_CLOSED` and `PLAYER_INTERACTION_MANAGER_FRAME_HIDE`.
+  - Added dual throttled scans (at `0.3s` and `0.8s`) during active banker visits to ensure all equipped bank bags stream completely from the server before saving.
+
+### Spin 0.0.14
+- **Snapshot Item Field Key Mismatch (Missing Icons & Links)**:
+  - Fixed property name mismatch in `SaveCurrentCharacterBank()` and `SaveCurrentCharacterBags()` where normalized `ContainerHelper:GetItemInfo()` fields (`.icon`, `.link`, `.count`) were incorrectly read as `.iconFileID`, `.hyperlink`, and `.stackCount`.
   - Added robust fallback resolution: `icon = itemInfo.icon or itemInfo.iconFileID` (with `C_Item.GetItemIconByID` fallback) and `link = itemInfo.link or itemInfo.hyperlink`.
 - **Throttled Bank Scan Scheduling**:
   - Implemented `ScheduleBankScan()` with `C_Timer.After(0.3, ...)` to ensure bank contents are recorded after streaming completes from the server.

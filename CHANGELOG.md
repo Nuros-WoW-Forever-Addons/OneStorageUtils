@@ -5,6 +5,36 @@ All notable changes to **OneStorageUtils** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.18] - 2026-11-18
+### Added
+- **Profession & Crafting Window Tooltip Integration**:
+  - Expanded `CharacterCache:UpdateAltTooltip` to automatically activate when hovering over reagents and crafted items in profession and crafting interfaces (`TradeSkillFrame`, `CraftFrame`, `ProfessionsFrame`).
+  - Added dedicated hooks on `TradeSkillFrame` (`TradeSkillSkillIcon`, `TradeSkillReagent1..8`) and `CraftFrame` (`CraftIcon`, `CraftReagent1..8`) querying native `GetTradeSkillReagentItemLink`, `GetTradeSkillItemLink`, and `GetCraftReagentItemLink`.
+  - Registered `TooltipDataProcessor.AddTooltipPostCall` across all recipe, reagent, and craft data types (`RecipeReagent`, `Profession`, `CraftingCost`, `Spell`), with multi-stage item resolution (`data.id`, `data.hyperlink`, and `tooltip:GetItem()`), plus `GameTooltip` `OnShow` and `hooksecurefunc` profession setter hooks.
+  - Updated `OneStorageAltTooltipFrame` ("Character Inventory") to display cached Bags and Bank counts for any character that owns the item—including when only the currently logged-in character has it.
+
+---
+
+## [0.0.17] - 2026-11-18
+### Fixed
+- **Cursor-Aware Dynamic Sub-Frame Anchor & Anti-Overlap Engine**:
+  - Sampled live mouse cursor coordinates via `GetCursorPosition()` / `UIParent:GetEffectiveScale()`.
+  - Built a 2D collision detection and scoring model that evaluates candidate anchor positions (below-away, above-away, side-away) against the mouse pointer bounding box (`36x36px` with buffer).
+  - Automatically flips alignment (expanding away from the mouse) or flips vertical placement (above vs below) whenever the cursor or slot button would otherwise be covered by `OneStorageAltTooltipFrame`.
+  - Prevents the WoW gauntlet hand cursor from obscuring any part of the alt inventory tooltip text.
+
+---
+
+## [0.0.16] - 2026-11-18
+### Fixed
+- **Alt Tooltip Sub-Frame Dynamic Width & Smart Boundary Anchoring**:
+  - Resolved text overrunning `OneStorageAltTooltipFrame` when character names or item counts exceeded the host tooltip width.
+  - Dynamically measures `GetStringWidth()` across `f.Title` and all active character/total lines, adjusting width to `max(tooltipWidth, maxTextW + 24)`.
+  - Added smart screen boundary positioning: detects if the host tooltip is near the right screen edge or bottom screen edge and dynamically anchors `TOPRIGHT` vs `TOPLEFT` and above vs below to prevent clipping offscreen.
+  - Increased bottom padding from `24 + lineIdx*15` to `30 + lineIdx*15` (minimum 40px) so the "Total Across Characters" line is cleanly padded inside the bottom border.
+
+---
+
 ## [0.0.15] - 2026-11-15
 ### Fixed
 - **Prevent Overwriting Bank Snapshot with 0 Slots Away from Banker**:
