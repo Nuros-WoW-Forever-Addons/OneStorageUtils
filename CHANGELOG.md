@@ -5,6 +5,14 @@ All notable changes to **OneStorageUtils** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.19] - 2026-11-20
+### Fixed
+- **Secret Value Guard on Tooltip Data (`UnitAura` / Buff Tooltips)**:
+  - Fixed `attempt to compare field 'id' (a secret number value)` in `CharacterCache.lua` when hovering unit auras/buffs (`SetUnitAuraByAuraInstanceID`) while `GameTooltip:OnShow` inspected `TooltipData`.
+  - Consolidated tooltip item extraction into a single `ExtractItemRefFromTooltip()` helper guarded with `issecretvalue` across `id`, `link`, `data.type`, `data.id`, and `data.hyperlink`.
+
+---
+
 ## [0.0.18] - 2026-11-18
 ### Added
 - **Profession & Crafting Window Tooltip Integration**:

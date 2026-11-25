@@ -817,28 +817,56 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 -- Tooltip Integration (Items, Reagents, Recipes, and Trade Skills)
-local function OnTooltipItemProcessed(tooltip, data)
-    if tooltip ~= GameTooltip then return end
-    
-    local itemRef = nil
-    
-    -- 1. Try data.id if data is an Item
-    if data then
-        if data.type == (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item) and data.id and data.id > 0 then
-            itemRef = data.id
-        elseif data.hyperlink and type(data.hyperlink) == "string" then
-            itemRef = tonumber(data.hyperlink:match("item:(%d+)"))
-        elseif data.id and data.id > 0 and data.type ~= (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell) then
-            itemRef = data.id
+local function IsSafeValue(v)
+    return v ~= nil and not (issecretvalue and issecretvalue(v))
+end
+
+local function ExtractItemRefFromTooltip(tooltip, data)
+    if not tooltip or tooltip ~= GameTooltip then return nil end
+
+    -- 1. Try tooltip:GetItem() first (works across bags, bank, professions, and links)
+    if tooltip.GetItem then
+        local _, link, id = tooltip:GetItem()
+        if IsSafeValue(id) and type(id) == "number" and id > 0 then
+            return id
+        end
+        if IsSafeValue(link) and type(link) == "string" then
+            local itemID = tonumber(link:match("item:(%d+)"))
+            if itemID then return itemID end
         end
     end
-    
-    -- 2. Fall back to tooltip:GetItem()
-    if not itemRef and tooltip.GetItem then
-        local _, link, id = tooltip:GetItem()
-        itemRef = id or (link and tonumber(link:match("item:(%d+)")))
+
+    -- 2. Try TooltipData (guarding all fields against secret values from auras/units/spells)
+    if not data and tooltip.GetTooltipData then
+        data = tooltip:GetTooltipData()
     end
-    
+    if data then
+        local dataType = IsSafeValue(data.type) and data.type or nil
+        local dataID = IsSafeValue(data.id) and data.id or nil
+        local dataLink = IsSafeValue(data.hyperlink) and data.hyperlink or nil
+
+        if dataType and Enum and Enum.TooltipDataType then
+            if (dataType == Enum.TooltipDataType.Item
+                or dataType == Enum.TooltipDataType.RecipeReagent
+                or dataType == Enum.TooltipDataType.Profession
+                or dataType == Enum.TooltipDataType.CraftingCost)
+                and type(dataID) == "number" and dataID > 0 then
+                return dataID
+            end
+        end
+
+        if type(dataLink) == "string" then
+            local itemID = tonumber(dataLink:match("item:(%d+)"))
+            if itemID then return itemID end
+        end
+    end
+
+    return nil
+end
+
+local function OnTooltipItemProcessed(tooltip, data)
+    if tooltip ~= GameTooltip then return end
+    local itemRef = ExtractItemRefFromTooltip(tooltip, data)
     if itemRef then
         CharacterCache:UpdateAltTooltip(itemRef)
     end
@@ -846,26 +874,7 @@ end
 
 local function CheckGameTooltipForAltInventory(tooltip)
     if not tooltip or tooltip ~= GameTooltip or not tooltip:IsShown() then return end
-    
-    local itemRef = nil
-    if tooltip.GetItem then
-        local _, link, id = tooltip:GetItem()
-        itemRef = id or (link and tonumber(link:match("item:(%d+)")))
-    end
-    
-    if not itemRef and tooltip.GetTooltipData then
-        local data = tooltip:GetTooltipData()
-        if data then
-            if data.type == (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item) and data.id and data.id > 0 then
-                itemRef = data.id
-            elseif data.hyperlink and type(data.hyperlink) == "string" then
-                itemRef = tonumber(data.hyperlink:match("item:(%d+)"))
-            elseif data.id and data.id > 0 and data.type ~= (Enum and Enum.TooltipDataType and Enum.TooltipDataType.Spell) then
-                itemRef = data.id
-            end
-        end
-    end
-    
+    local itemRef = ExtractItemRefFromTooltip(tooltip, nil)
     if itemRef then
         CharacterCache:UpdateAltTooltip(itemRef)
     else

@@ -7,7 +7,7 @@
 ## 🎯 Overview & Scope
 
 - **Addon Name**: OneStorageUtils
-- **Current Version**: 0.0.18
+- **Current Version**: 0.0.19
 - **Suite**: Part of the **OneSuite** family (Core Storage Dependency)
 - **GitHub Repository**:
   - Exists: TRUE
@@ -74,6 +74,11 @@ When picking up development on this addon:
 - **Throttled Bank Scan Scheduling**:
   - Implemented `ScheduleBankScan()` with `C_Timer.After(0.3, ...)` to ensure bank contents are recorded after streaming completes from the server.
   - Registered modern `PLAYER_INTERACTION_MANAGER_FRAME_SHOW`/`HIDE`, `BANK_TABS_CHANGED`, and `BANKFRAME_CLOSED` events.
+
+### Spin 0.0.19
+- **Secret Value Guard on Tooltip Data (`UnitAura` / Buff Tooltips)**:
+  - Fixed `attempt to compare field 'id' (a secret number value)` in `CharacterCache.lua` when hovering unit auras/buffs (`SetUnitAuraByAuraInstanceID`) while `GameTooltip:OnShow` inspected `TooltipData`.
+  - Consolidated tooltip item extraction into a single `ExtractItemRefFromTooltip()` helper guarded with `issecretvalue` across `id`, `link`, `data.type`, `data.id`, and `data.hyperlink`.
 
 ### Spin 0.0.18
 - **Profession & Crafting Window Tooltip Integration**:
